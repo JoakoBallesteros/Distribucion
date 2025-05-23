@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Resultados de Distribuciones</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="select-page">
+  <div class="wrapper">
+    <div class="menu-card">
+      <h1>Distribuciones</h1>
+
+      <!-- Botón Volver -->
+      <a href="{{ url_for('select', filename=filename) }}" class="back-button">
+        ← Volver
+      </a>
+
+      <!-- Guardar y descargar -->
+      <form id="reassignForm"
+            method="post"
+            action="{{ url_for('reassign', filename=file_name) }}"
+            style="text-align: center; margin-bottom: 1.5rem;">
+        <input type="hidden" name="reassignments" id="reassignments" value="">
+        <button type="submit"
+                class="btn btn-generate"
+                onclick="prepareReassign()">
+          📥 Guardar y descargar
+        </button>
+      </form>
+
+      <!-- Grid de líderes -->
+      <div class="menu-grid">
+        {% for leader in ordered_leaders %}
+          {% set infos = assignments[leader] %}
+          <div class="menu-item">
+            <div class="card-header d-flex justify-content-between align-items-center mb-2">
+              <strong>{{ leader }}</strong>
+              <span class="badge bg-secondary">{{ infos|length }} reps</span>
+            </div>
+            <!-- añadimos data-leader para luego actualizar el badge -->
+            <ul class="list-group list-group-flush" data-leader="{{ leader }}">
+              {% if infos %}
+                {% for info in infos %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center"
+                      data-rep="{{ info.rep }}">
+                    <div>{{ info.rep }}</div>
+                    <div class="text-end">
+                      <span class="badge bg-secondary">{{ info.service }}</span>
+                      <div><small>{{ info.ingreso }}</small></div>
+                    </div>
+                  </li>
+                {% endfor %}
+              {% else %}
+                <li class="list-group-item text-muted">No hay reps asignados</li>
+              {% endif %}
+            </ul>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    // Actualiza el badge con el recuento de <li> en la lista
+    function updateCount(list) {
+      if (!list) return;
+      const count = list.children.length;
+      const leader = list.dataset.leader;
+      // encuentra la badge correspondiente
+      const card = document.querySelector(
+        `.menu-item ul[data-leader="${leader}"]`
+      ).closest('.menu-item');
+      const badge = card.querySelector('.card-header .badge');
+      badge.textContent = `${count} reps`;
+    }
+
+    // Inicializa Sortable y engancha onEnd
+    document.querySelectorAll('ul.list-group').forEach(ul => {
+      Sortable.create(ul, {
+        group: 'shared',
+        animation: 150,
+        fallbackOnBody: true,
+        swapThreshold: 0.65,
+        onEnd: evt => {
+          // actualiza fuente y destino
+          updateCount(evt.from);
+          updateCount(evt.to);
+        }
+      });
+    });
+
+    // Prepara el JSON para reenviar al servidor
+    function prepareReassign() {
+      const data = {};
+      document.querySelectorAll('ul.list-group').forEach(ul => {
+        const leader = ul.dataset.leader;
+        data[leader] = Array.from(ul.children)
+          .map(li => li.dataset.rep);
+      });
+      document.getElementById('reassignments').value = JSON.stringify(data);
+    }
+  </script>
+</body>
+</html>
